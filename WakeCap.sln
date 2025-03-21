@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Application.Contact
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Application", "src\WakeCap.Application\WakeCap.Application.csproj", "{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Persistence.EfCore", "src\infrastructure\WakeCap.Persistence.EfCore\WakeCap.Persistence.EfCore.csproj", "{800AEF5B-005F-4F73-A537-D066E768E8A2}"
 EndProject
 Global
