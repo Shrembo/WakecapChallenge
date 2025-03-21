@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Application.Contact
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Application", "src\WakeCap.Application\WakeCap.Application.csproj", "{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Persistence.EfCore", "src\infrastructure\WakeCap.Persistence.EfCore\WakeCap.Persistence.EfCore.csproj", "{800AEF5B-005F-4F73-A537-D066E768E8A2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Infrastructure", "src\WakeCap.Infrastructure\WakeCap.Infrastructure.csproj", "{B06CEC10-2855-4C37-BBDB-411B21AD1968}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +29,10 @@ Global
 		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Release|Any CPU.Build.0 = Release|Any CPU
-		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B06CEC10-2855-4C37-BBDB-411B21AD1968}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B06CEC10-2855-4C37-BBDB-411B21AD1968}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B06CEC10-2855-4C37-BBDB-411B21AD1968}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B06CEC10-2855-4C37-BBDB-411B21AD1968}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
