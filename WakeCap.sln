@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Domain", "src\WakeCap.Domain\WakeCap.Domain.csproj", "{1E729912-6FAA-496E-8E02-9833BE9D8F08}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Application.Contacts", "src\WakeCap.Application.Contacts\WakeCap.Application.Contacts.csproj", "{D4B601EC-EBAD-4238-9C10-60058DFB05C9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Application", "src\WakeCap.Application\WakeCap.Application.csproj", "{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WakeCap.Persistence.EfCore", "src\infrastructure\WakeCap.Persistence.EfCore\WakeCap.Persistence.EfCore.csproj", "{800AEF5B-005F-4F73-A537-D066E768E8A2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1E729912-6FAA-496E-8E02-9833BE9D8F08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E729912-6FAA-496E-8E02-9833BE9D8F08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E729912-6FAA-496E-8E02-9833BE9D8F08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E729912-6FAA-496E-8E02-9833BE9D8F08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4B601EC-EBAD-4238-9C10-60058DFB05C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4B601EC-EBAD-4238-9C10-60058DFB05C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4B601EC-EBAD-4238-9C10-60058DFB05C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4B601EC-EBAD-4238-9C10-60058DFB05C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE9922BB-B11F-485A-BFDE-C5F212DB7F40}.Release|Any CPU.Build.0 = Release|Any CPU
+		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{800AEF5B-005F-4F73-A537-D066E768E8A2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{800AEF5B-005F-4F73-A537-D066E768E8A2} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7BC9A9A6-BE27-431F-9261-CE82718D0CFD}
+	EndGlobalSection
+EndGlobal
