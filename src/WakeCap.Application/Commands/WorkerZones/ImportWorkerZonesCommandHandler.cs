@@ -3,19 +3,22 @@ using MediatR;
 using WakeCap.Application.Contacts;
 using WakeCap.Application.Contacts.Stores;
 using WakeCap.Domain;
+using WakeCap.Infrastructure.CsvParsers;
 
 namespace WakeCap.Application.Commands.WorkerZones;
 
 public sealed class ImportWorkerZonesCommandHandler(
+    ICsvParser csvParser,
     IWorkersStore workersStore,
     IZonesStore zonesStore,
-    IWorkerZonesStore workerZonesStore) : IRequestHandler<ImportWorkerZonesCommand, IEnumerable<ValidationResult>>
+    IWorkerZonesStore workerZonesStore) : IRequestHandler<ImportWorkerZonesCommand, IEnumerable<ValidationResult<WorkerAssignmentParameters>>>
 {
-    private readonly IWorkersStore _workersStore = workersStore;
-    private readonly IZonesStore _zonesStore = zonesStore;
-    private readonly IWorkerZonesStore _workerZonesStore = workerZonesStore;
+    readonly ICsvParser _csvParser = csvParser;
+    readonly IWorkersStore _workersStore = workersStore;
+    readonly IZonesStore _zonesStore = zonesStore;
+    readonly IWorkerZonesStore _workerZonesStore = workerZonesStore;
 
-    public async Task<IEnumerable<ValidationResult>> Handle(ImportWorkerZonesCommand request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ValidationResult<WorkerAssignmentParameters>>> Handle(ImportWorkerZonesCommand request, CancellationToken cancellationToken)
     {
         var validationResult = await ParseAndPreValidateAsync(request.FileStream, cancellationToken);
         if (validationResult.Any(a => a.Succeeded == true))
@@ -27,74 +30,40 @@ public sealed class ImportWorkerZonesCommandHandler(
     }
 
 
-    private static async Task<IEnumerable<ValidationResult>> ParseAndPreValidateAsync(Stream stream, CancellationToken cancellationToken)
+
+    private async Task<IEnumerable<ValidationResult<WorkerAssignmentParameters>>> ParseAndPreValidateAsync(Stream stream, CancellationToken cancellationToken)
     {
-        using var reader = new StreamReader(stream, leaveOpen: true);
-        var headerLine = await reader.ReadLineAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(headerLine))
-        {
-            return [ new ValidationResult { Error = new() { ["file"] = "File is empty or missing headers." } } ];
-        }
-
-        var headers = headerLine.Split(',');
-        if (headers.Length != 3)
-        {
-            return [ new ValidationResult { Error = new() { ["file"] = "CSV must contain exactly 3 columns." } } ];
-        }
-
-        if (!headers.SequenceEqual(["Worker Code", "Zone Code", "Assignment Date"], StringComparer.OrdinalIgnoreCase))
-        {
-            return [ new ValidationResult { Error = new() { ["file"] = "CSV headers must be: Worker Code, Zone Code, Assignment Date" } } ];
-        }
-
-        var results = new List<ValidationResult>();
-        int rowCount = 0;
-        string? line;
-        while ((line = await reader.ReadLineAsync(cancellationToken)) is not null)
-        {
-            rowCount++;
-            if (rowCount > 50000)
+        return await _csvParser.ParseAndPreValidateAsync(
+            stream,
+            [ "Worker Code", "Zone Code", "Assignment Date" ],
+            columns =>
             {
-                return [new ValidationResult { Error = new() { ["file"] = "CSV file exceeds the 50,000 row limit." } }];
-            }
+                var (workerCode, zoneCode, dateStr) = (columns[0].Trim(), columns[1].Trim(), columns[2].Trim());
+                var errors = new Dictionary<string, string>();
+                if (string.IsNullOrWhiteSpace(workerCode) || workerCode.Length > 10)
+                {
+                    errors["worker_code"] = "Missing or exceeds 10 characters.";
+                }
 
-            var columns = line.Split(',');
-            if (columns.Length != 3)
-            {
-                results.Add(new ValidationResult { Error = new() { ["row"] = $"Invalid column count at row {rowCount}" } });
-                continue;
-            }
+                if (string.IsNullOrWhiteSpace(zoneCode) || zoneCode.Length > 10)
+                {
+                    errors["zone_code"] = "Missing or exceeds 10 characters.";
+                }
 
-            var (workerCode, zoneCode, assignmentDateStr) = (columns[0].Trim(), columns[1].Trim(), columns[2].Trim());
-            var rowErrors = new Dictionary<string, string>();
+                if (!DateOnly.TryParseExact(dateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var assignmentDate))
+                {
+                    errors["assignment_date"] = "Invalid date format. Expected format: yyyy-MM-dd.";
+                }
 
-            if (string.IsNullOrWhiteSpace(workerCode) || workerCode.Length > 10)
-            {
-                rowErrors["worker_code"] = "Missing or exceeds 10 characters.";
-            }
-
-            if (string.IsNullOrWhiteSpace(zoneCode) || zoneCode.Length > 10)
-            {
-                rowErrors["zone_code"] = "Missing or exceeds 10 characters.";
-            }
-
-            if (!DateOnly.TryParseExact(assignmentDateStr, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
-            {
-                rowErrors["assignment_date"] = "Invalid date format. Expected format: yyyy-MM-dd.";
-            }
-
-            var data = new WorkerAssignmentParameters(workerCode, zoneCode, assignmentDateStr);
-            results.Add(new ValidationResult
-            {
-                Data = data,
-                Error = rowErrors.Count > 0 ? rowErrors : null
-            });
-        }
-
-        return results;
+                return new ValidationResult<WorkerAssignmentParameters>
+                {
+                    Data = new WorkerAssignmentParameters(workerCode, zoneCode, assignmentDate),
+                    Error = errors.Count > 0 ? errors : null
+                };
+            }, cancellationToken);
     }
 
-    private async Task RunPostValidationAndSaveAsync(IEnumerable<ValidationResult> results, CancellationToken cancellationToken)
+    private async Task RunPostValidationAndSaveAsync(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, CancellationToken cancellationToken)
     {
         var rows = results.Where(r => r.Succeeded).Select(r => r.Data!).ToList();
 
@@ -103,13 +72,13 @@ public sealed class ImportWorkerZonesCommandHandler(
 
         var workerDatePairs = rows
             .Where(r => workers.ContainsKey(r.WorkerCode))
-            .Select(r => (workers[r.WorkerCode].Id, DateOnly.ParseExact(r.AssignmentDate, "yyyy-MM-dd")))
+            .Select(r => (workers[r.WorkerCode].Id, r.AssignmentDate))
             .Distinct()
             .ToList();
 
         var existingAssignments = await _workerZonesStore.List(workerDatePairs, cancellationToken);
 
-        var duplicateSet = new HashSet<(string worker, string zone, string date)>();
+        var duplicateSet = new HashSet<(string worker, string zone, DateOnly date)>();
 
         ValidateWorkerExistence(results, workers);
         ValidateZoneExistence(results, zones);
@@ -127,7 +96,7 @@ public sealed class ImportWorkerZonesCommandHandler(
                 var row = r.Data!;
                 var worker = workers[row.WorkerCode];
                 var zone = zones[row.ZoneCode];
-                var date = DateOnly.ParseExact(row.AssignmentDate, "yyyy-MM-dd");
+                var date = row.AssignmentDate;
                 return WorkerZoneAssignment.Create(worker.Id, zone.Id, date);
             })
             .ToList();
@@ -135,7 +104,7 @@ public sealed class ImportWorkerZonesCommandHandler(
         await _workerZonesStore.Add(validAssignments, cancellationToken);
     }
 
-    private static void ValidateWorkerExistence(IEnumerable<ValidationResult> results, Dictionary<string, Worker> workers)
+    private static void ValidateWorkerExistence(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, Dictionary<string, Worker> workers)
     {
         foreach (var r in results.Where(r => r.Succeeded))
         {
@@ -144,7 +113,7 @@ public sealed class ImportWorkerZonesCommandHandler(
         }
     }
 
-    private static void ValidateZoneExistence(IEnumerable<ValidationResult> results, Dictionary<string, Zone> zones)
+    private static void ValidateZoneExistence(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, Dictionary<string, Zone> zones)
     {
         foreach (var r in results.Where(r => r.Succeeded))
         {
@@ -153,7 +122,7 @@ public sealed class ImportWorkerZonesCommandHandler(
         }
     }
     
-    private static void ValidateDuplicatesInFile(IEnumerable<ValidationResult> results, HashSet<(string, string, string)> duplicateSet)
+    private static void ValidateDuplicatesInFile(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, HashSet<(string, string, DateOnly)> duplicateSet)
     {
         foreach (var r in results.Where(r => r.Succeeded))
         {
@@ -164,7 +133,7 @@ public sealed class ImportWorkerZonesCommandHandler(
         }
     }
 
-    private static void ValidateMultiZoneAssignments(IEnumerable<ValidationResult> results, HashSet<(string worker, string zone, string date)> allKeys)
+    private static void ValidateMultiZoneAssignments(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, HashSet<(string worker, string zone, DateOnly date)> allKeys)
     {
         foreach (var r in results.Where(r => r.Succeeded))
         {
@@ -179,12 +148,12 @@ public sealed class ImportWorkerZonesCommandHandler(
         }
     }
 
-    private static void ValidateDbConflicts(IEnumerable<ValidationResult> results, Dictionary<string, Worker> workers, Dictionary<string, Zone> zones, List<WorkerZoneAssignment> existingAssignments)
+    private static void ValidateDbConflicts(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, Dictionary<string, Worker> workers, Dictionary<string, Zone> zones, List<WorkerZoneAssignment> existingAssignments)
     {
         foreach (var r in results.Where(r => r.Succeeded))
         {
             var d = r.Data!;
-            var date = DateOnly.ParseExact(d.AssignmentDate, "yyyy-MM-dd");
+            var date = d.AssignmentDate;
             var worker = workers[d.WorkerCode];
             var zone = zones[d.ZoneCode];
 

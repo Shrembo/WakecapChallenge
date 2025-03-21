@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WakeCap.Application.Contacts\WakeCap.Application.Contacts.csproj" />
+    <ProjectReference Include="..\WakeCap.Infrastructure\WakeCap.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
