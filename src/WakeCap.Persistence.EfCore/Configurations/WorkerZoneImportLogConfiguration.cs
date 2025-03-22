@@ -6,6 +6,7 @@ namespace WakeCap.Persistence.EfCore.Configurations;
 
 public sealed class WorkerZoneImportLogConfiguration : IEntityTypeConfiguration<WorkerZoneImportLog>
 {
+    //todo: match the naming convention of the other tables.
     public void Configure(EntityTypeBuilder<WorkerZoneImportLog> builder)
     {
         builder.ToTable("worker_zone_import_log");

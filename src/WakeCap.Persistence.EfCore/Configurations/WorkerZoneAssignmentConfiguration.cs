@@ -9,6 +9,11 @@ internal sealed class WorkerZoneAssignmentConfiguration : IEntityTypeConfigurati
     public void Configure(EntityTypeBuilder<WorkerZoneAssignment> builder)
     {
         builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.Id).HasColumnName("id");
+        builder.Property(x => x.WorkerId).HasColumnName("worker_id");
+        builder.Property(x => x.ZoneId).HasColumnName("zone_id");
+        builder.Property(x => x.EffectiveDate).HasColumnName("effective_date");
         builder.ToTable("worker_zone_assignment", t => t.ExcludeFromMigrations());
     }
 }
