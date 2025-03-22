@@ -4,7 +4,7 @@ using WakeCap.Domain;
 
 namespace WakeCap.Persistence.EfCore.Stores;
 
-internal sealed class WorkerStore(IDbContextFactory<WakeCapDbContext> contextFactory) : IWorkersStore
+internal sealed class WorkersStore(IDbContextFactory<WakeCapDbContext> contextFactory) : IWorkersStore
 {
     readonly IDbContextFactory<WakeCapDbContext> _contextFactory = contextFactory;
     

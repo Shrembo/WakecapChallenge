@@ -11,12 +11,14 @@ public sealed class ImportWorkerZonesCommandHandler(
     ICsvParser csvParser,
     IWorkersStore workersStore,
     IZonesStore zonesStore,
-    IWorkerZonesStore workerZonesStore) : IRequestHandler<ImportWorkerZonesCommand, IEnumerable<ValidationResult<WorkerAssignmentParameters>>>
+    IWorkerZonesStore workerZonesStore,
+    IImportLogsStore importLogsStore) : IRequestHandler<ImportWorkerZonesCommand, IEnumerable<ValidationResult<WorkerAssignmentParameters>>>
 {
     readonly ICsvParser _csvParser = csvParser;
     readonly IWorkersStore _workersStore = workersStore;
     readonly IZonesStore _zonesStore = zonesStore;
     readonly IWorkerZonesStore _workerZonesStore = workerZonesStore;
+    readonly IImportLogsStore _importLogsStore = importLogsStore;
 
     public async Task<IEnumerable<ValidationResult<WorkerAssignmentParameters>>> Handle(ImportWorkerZonesCommand request, CancellationToken cancellationToken)
     {
@@ -26,10 +28,28 @@ public sealed class ImportWorkerZonesCommandHandler(
             await RunPostValidationAndSaveAsync(validationResult, cancellationToken);
         }
 
+        await WriteLog(request, validationResult, cancellationToken);
         return validationResult.Where(a => a.Succeeded == false);
     }
 
+    private async Task WriteLog(ImportWorkerZonesCommand request, IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, CancellationToken cancellationToken)
+    {
+        var status = validationResults.Any(v => v.Succeeded == false) ? WorkerZoneImportStatus.Rejected : WorkerZoneImportStatus.Saved;
+        var errorSummary = BuildErrorSummary(validationResults);
+        await _importLogsStore.Add(WorkerZoneImportLog.Create(request.FileName, status, errorSummary), cancellationToken);
+    }
 
+    private static string? BuildErrorSummary(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults)
+    {
+        var failed = validationResults.Where(r => r.Succeeded == false && r.Error != null);
+
+        var grouped = failed
+            .SelectMany(r => r.Error!)
+            .GroupBy(kvp => kvp.Key)
+            .Select(g => $"{g.Key}: {g.Select(e => e.Value).FirstOrDefault()}");
+
+        return grouped.Any() ? string.Join("; ", grouped) : null;
+    }
 
     private async Task<IEnumerable<ValidationResult<WorkerAssignmentParameters>>> ParseAndPreValidateAsync(Stream stream, CancellationToken cancellationToken)
     {
@@ -63,9 +83,9 @@ public sealed class ImportWorkerZonesCommandHandler(
             }, cancellationToken);
     }
 
-    private async Task RunPostValidationAndSaveAsync(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, CancellationToken cancellationToken)
+    private async Task RunPostValidationAndSaveAsync(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, CancellationToken cancellationToken)
     {
-        var rows = results.Where(r => r.Succeeded).Select(r => r.Data!).ToList();
+        var rows = validationResults.Where(r => r.Succeeded).Select(r => r.Data!).ToList();
 
         var workers = await _workersStore.List(rows.Select(r => r.WorkerCode).Distinct().ToHashSet(), cancellationToken);
         var zones = await _zonesStore.List(rows.Select(r => r.ZoneCode).Distinct().ToHashSet(), cancellationToken);
@@ -80,16 +100,16 @@ public sealed class ImportWorkerZonesCommandHandler(
 
         var duplicateSet = new HashSet<(string worker, string zone, DateOnly date)>();
 
-        ValidateWorkerExistence(results, workers);
-        ValidateZoneExistence(results, zones);
-        ValidateDuplicatesInFile(results, duplicateSet);
-        ValidateMultiZoneAssignments(results, duplicateSet);
-        ValidateDbConflicts(results, workers, zones, existingAssignments);
+        ValidateWorkerExistence(validationResults, workers);
+        ValidateZoneExistence(validationResults, zones);
+        ValidateDuplicatesInFile(validationResults, duplicateSet);
+        ValidateMultiZoneAssignments(validationResults, duplicateSet);
+        ValidateDbConflicts(validationResults, workers, zones, existingAssignments);
 
 
-        if (results.Any(r => r.Succeeded == false)) return;
+        if (validationResults.Any(r => r.Succeeded == false)) return;
 
-        var validAssignments = results
+        var validAssignments = validationResults
             .Where(r => r.Succeeded)
             .Select(r =>
             {
@@ -104,27 +124,27 @@ public sealed class ImportWorkerZonesCommandHandler(
         await _workerZonesStore.Add(validAssignments, cancellationToken);
     }
 
-    private static void ValidateWorkerExistence(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, Dictionary<string, Worker> workers)
+    private static void ValidateWorkerExistence(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, Dictionary<string, Worker> workers)
     {
-        foreach (var r in results.Where(r => r.Succeeded))
+        foreach (var r in validationResults.Where(r => r.Succeeded))
         {
             if (!workers.ContainsKey(r.Data!.WorkerCode))
                 r.Error = new() { ["worker_code"] = "Worker does not exist" };
         }
     }
 
-    private static void ValidateZoneExistence(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, Dictionary<string, Zone> zones)
+    private static void ValidateZoneExistence(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, Dictionary<string, Zone> zones)
     {
-        foreach (var r in results.Where(r => r.Succeeded))
+        foreach (var r in validationResults.Where(r => r.Succeeded))
         {
             if (!zones.ContainsKey(r.Data!.ZoneCode))
                 r.Error = new() { ["zone_code"] = "Zone does not exist" };
         }
     }
     
-    private static void ValidateDuplicatesInFile(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, HashSet<(string, string, DateOnly)> duplicateSet)
+    private static void ValidateDuplicatesInFile(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, HashSet<(string, string, DateOnly)> duplicateSet)
     {
-        foreach (var r in results.Where(r => r.Succeeded))
+        foreach (var r in validationResults.Where(r => r.Succeeded))
         {
             var d = r.Data!;
             var key = (d.WorkerCode, d.ZoneCode, d.AssignmentDate);
@@ -133,9 +153,9 @@ public sealed class ImportWorkerZonesCommandHandler(
         }
     }
 
-    private static void ValidateMultiZoneAssignments(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, HashSet<(string worker, string zone, DateOnly date)> allKeys)
+    private static void ValidateMultiZoneAssignments(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, HashSet<(string worker, string zone, DateOnly date)> allKeys)
     {
-        foreach (var r in results.Where(r => r.Succeeded))
+        foreach (var r in validationResults.Where(r => r.Succeeded))
         {
             var d = r.Data!;
             bool hasConflict = allKeys.Any(k =>
@@ -148,9 +168,9 @@ public sealed class ImportWorkerZonesCommandHandler(
         }
     }
 
-    private static void ValidateDbConflicts(IEnumerable<ValidationResult<WorkerAssignmentParameters>> results, Dictionary<string, Worker> workers, Dictionary<string, Zone> zones, List<WorkerZoneAssignment> existingAssignments)
+    private static void ValidateDbConflicts(IEnumerable<ValidationResult<WorkerAssignmentParameters>> validationResults, Dictionary<string, Worker> workers, Dictionary<string, Zone> zones, List<WorkerZoneAssignment> existingAssignments)
     {
-        foreach (var r in results.Where(r => r.Succeeded))
+        foreach (var r in validationResults.Where(r => r.Succeeded))
         {
             var d = r.Data!;
             var date = d.AssignmentDate;
