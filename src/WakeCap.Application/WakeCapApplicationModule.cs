@@ -7,7 +7,7 @@ public static class WakeCapApplicationModule
 {
     public static IServiceCollection Register(IServiceCollection services, IConfiguration _)
     {
-        //services.AddMediatR(typeof(ImportWorkerZonesCommand).Assembly);
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(WakeCapApplicationModule).Assembly));
         return services;
     }
 }
