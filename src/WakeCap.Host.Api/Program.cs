@@ -1,10 +1,12 @@
 using WakeCap.Application;
+using WakeCap.Infrastructure;
 using WakeCap.Persistence.EfCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+WakeCapInfrastructureModule.Register(builder.Services, builder.Configuration);
 WakeCapPersistenceModule.Register(builder.Services, builder.Configuration);
 WakeCapApplicationModule.Register(builder.Services, builder.Configuration);
 

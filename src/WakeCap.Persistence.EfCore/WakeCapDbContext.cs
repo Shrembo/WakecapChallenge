@@ -1,8 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
+
 namespace WakeCap.Persistence.EfCore;
 
-internal sealed class WakeCapDbContext : DbContext
+public sealed class WakeCapDbContext(DbContextOptions<WakeCapDbContext> options) : DbContext(options)
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
